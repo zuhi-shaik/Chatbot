@@ -1,5 +1,91 @@
+import React, { useState, useEffect, useRef } from "react";
+import Navbar from "./Components/Navbar";
+import { GoogleGenAI } from "@google/genai";
+import { BeatLoader } from "react-spinners";
+import Markdown from "react-markdown";
+import { IoWarningOutline, IoSend } from "react-icons/io5";
+import { MdOutlineAttachMoney } from "react-icons/md";
+import { BsGraphUp } from "react-icons/bs";
+import { AiOutlineBank } from "react-icons/ai";
 import { HiMenu } from "react-icons/hi";
-import { useState } from "react";
+
+const VoiceInput = ({ onResult }) => {
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState(null);
+
+  useEffect(() => {
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recog = new SpeechRecognition();
+      recog.lang = "en-US";
+      recog.interimResults = false;
+      recog.maxAlternatives = 1;
+
+      recog.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (onResult) onResult(transcript);
+        setIsListening(false);
+      };
+
+      recog.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+      };
+
+      recog.onend = () => setIsListening(false);
+      setRecognition(recog);
+    } else {
+      alert("Speech recognition not supported in this browser.");
+    }
+  }, [onResult]);
+
+  const startListening = () => {
+    if (recognition && !isListening) {
+      recognition.start();
+      setIsListening(true);
+    }
+  };
+
+  return (
+    <button
+      onClick={startListening}
+      className={`ml-2 px-4 py-2 rounded-lg ${
+        isListening ? "bg-red-500" : "bg-blue-500"
+      } text-white`}
+    >
+      {isListening ? "Listening..." : "🎤 Speak"}
+    </button>
+  );
+};
+
+const speakText = (text) => {
+  if ("speechSynthesis" in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  } else {
+    console.warn("Text-to-speech not supported in this browser.");
+  }
+};
+
+const isFinancialQuestion = (text) => {
+  const keywords = [
+    "investment",
+    "stocks",
+    "finance",
+    "banking",
+    "money",
+    "risk",
+    "fraud",
+    "interest rate",
+    "loan",
+  ];
+  const lowerText = text.toLowerCase();
+  return keywords.some((word) => lowerText.includes(word));
+};
 
 const App = () => {
   const [screen, setScreen] = useState(1);
@@ -12,15 +98,82 @@ const App = () => {
   const [currentSession, setCurrentSession] = useState([]);
   const messagesEndRef = useRef(null);
 
-  // scrollToBottom function here...
-  // getResponse function here...
-  // startNewChat function here...
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GOOGLE_API_KEY });
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => scrollToBottom(), [currentSession]);
+
+  const getResponse = async () => {
+    if (!prompt) return alert("Please enter a prompt");
+
+    if (currentSession.length === 0) {
+      const firstLine = prompt.split("\n")[0].slice(0, 50);
+      setHistory((prev) => [...prev, { firstLine, session: [] }]);
+    }
+
+    const userMessage = isFinancialQuestion(prompt)
+      ? `You are a financial expert. Answer concisely and always provide sources in the format:\nAnswer: <your answer>\nSource: <source link or reference>\nQuestion: ${prompt}`
+      : `Answer concisely.\nQuestion: ${prompt}`;
+
+    const newMessage = { role: "user", content: prompt };
+    setCurrentSession((prev) => [...prev, newMessage]);
+    setPrompt("");
+    setScreen(2);
+    setLoading(true);
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: userMessage,
+      });
+
+      let botReply =
+        response?.contents?.[0]?.text || response?.text || "Sorry, no response from API";
+
+      let answer = botReply;
+      let source = "";
+
+      if (isFinancialQuestion(prompt) && botReply.includes("Source:")) {
+        const parts = botReply.split("Source:");
+        answer = parts[0].replace("Answer:", "").trim();
+        source = parts[1].trim();
+      }
+
+      const botMessage = { role: "ai", content: answer, source };
+
+      setCurrentSession((prev) => {
+        const updatedSession = [...prev, botMessage];
+        setHistory((history) => {
+          const newHistory = [...history];
+          if (newHistory.length > 0) newHistory[newHistory.length - 1].session = updatedSession;
+          return newHistory;
+        });
+        return updatedSession;
+      });
+
+      if (ttsEnabled) speakText(answer);
+    } catch (error) {
+      console.error("AI API Error:", error);
+      setCurrentSession((prev) => [...prev, { role: "ai", content: "Error fetching response" }]);
+    }
+
+    setLoading(false);
+  };
+
+  const startNewChat = () => {
+    setCurrentSession([]);
+    setPrompt("");
+    setScreen(1);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-900 text-white">
       <Navbar />
 
-      {/* Hamburger for Mobile */}
+      {/* Mobile Hamburger */}
       <div className="sm:hidden flex items-center justify-between p-4 border-b border-gray-700">
         <h3 className="text-xl font-bold">FinGPT</h3>
         <button onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -44,7 +197,7 @@ const App = () => {
                 onClick={() => {
                   setCurrentSession(item.session);
                   setScreen(2);
-                  setSidebarOpen(false); // close on mobile when selecting
+                  setSidebarOpen(false);
                 }}
               >
                 {item.firstLine}...
@@ -69,7 +222,34 @@ const App = () => {
                 Fin<span className="text-blue-500">GPT</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 w-full">
-                {/* Your 4 cards here, same as previous */}
+                <div
+                  className="card flex flex-col items-center justify-center cursor-pointer bg-zinc-800 hover:bg-gray-800 rounded-lg p-5 transition-all"
+                  onClick={() => setScreen(2)}
+                >
+                  <MdOutlineAttachMoney className="text-6xl mb-2" />
+                  <p className="text-center">Money Management</p>
+                </div>
+                <div
+                  className="card flex flex-col items-center justify-center cursor-pointer bg-zinc-800 hover:bg-gray-800 rounded-lg p-5 transition-all"
+                  onClick={() => setScreen(2)}
+                >
+                  <BsGraphUp className="text-5xl mb-2" />
+                  <p className="text-center">Insights and Investments</p>
+                </div>
+                <div
+                  className="card flex flex-col items-center justify-center cursor-pointer bg-zinc-800 hover:bg-gray-800 rounded-lg p-5 transition-all"
+                  onClick={() => setScreen(2)}
+                >
+                  <AiOutlineBank className="text-6xl mb-2" />
+                  <p className="text-center">Banking Services</p>
+                </div>
+                <div
+                  className="card flex flex-col items-center justify-center cursor-pointer bg-zinc-800 hover:bg-gray-800 rounded-lg p-5 transition-all"
+                  onClick={() => setScreen(2)}
+                >
+                  <IoWarningOutline className="text-5xl mb-2" />
+                  <p className="text-center">Learn about Risks and Fraud</p>
+                </div>
               </div>
             </div>
           ) : (
@@ -78,16 +258,18 @@ const App = () => {
                 currentSession.map((item, index) => (
                   <div key={index} className="mb-4 flex flex-col">
                     {item.role === "user" ? (
-                      <div className="self-end bg-blue-500 text-white rounded-2xl p-3 max-w-xs sm:max-w-[50%] shadow-md">
+                      <div className="self-end bg-blue-500 text-white rounded-2xl p-3 max-w-xs sm:max-w-[50%] shadow-md break-words">
                         <p className="text-sm text-gray-100 mb-1">You</p>
                         <p>{item.content}</p>
                       </div>
                     ) : (
-                      <div className="self-start bg-gray-700 rounded-2xl p-3 max-w-xs sm:max-w-[50%] shadow-md">
+                      <div className="self-start bg-gray-700 rounded-2xl p-3 max-w-xs sm:max-w-[50%] shadow-md break-words">
                         <p className="text-sm text-gray-300 mb-1">FinGPT</p>
                         <Markdown>{item.content}</Markdown>
                         {item.source && (
-                          <p className="text-blue-400 mt-2 text-sm">Source: {item.source}</p>
+                          <p className="text-blue-400 mt-2 text-sm break-words">
+                            Source: {item.source}
+                          </p>
                         )}
                       </div>
                     )}
@@ -114,7 +296,7 @@ const App = () => {
                 value={prompt}
                 type="text"
                 placeholder="Enter your message"
-                className="flex-1 bg-transparent p-3 outline-none rounded text-white text-sm sm:text-base"
+                className="flex-1 bg-transparent p-3 outline-none rounded text-white text-sm sm:text-base break-words"
               />
               <VoiceInput onResult={(text) => setPrompt(text)} />
               <button
@@ -141,3 +323,5 @@ const App = () => {
     </div>
   );
 };
+
+export default App;
