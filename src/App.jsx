@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import "./App.css";
 import Navbar from "./Components/Navbar";
 import { GoogleGenAI } from "@google/genai";
 import { BeatLoader } from "react-spinners";
@@ -7,7 +8,6 @@ import { IoWarningOutline, IoSend } from "react-icons/io5";
 import { MdOutlineAttachMoney } from "react-icons/md";
 import { BsGraphUp } from "react-icons/bs";
 import { AiOutlineBank } from "react-icons/ai";
-import { HiMenu } from "react-icons/hi";
 
 const VoiceInput = ({ onResult }) => {
   const [isListening, setIsListening] = useState(false);
@@ -71,6 +71,7 @@ const speakText = (text) => {
   }
 };
 
+// Detect financial questions
 const isFinancialQuestion = (text) => {
   const keywords = [
     "investment",
@@ -92,7 +93,6 @@ const App = () => {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [history, setHistory] = useState([]);
   const [currentSession, setCurrentSession] = useState([]);
@@ -103,7 +103,6 @@ const App = () => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
   useEffect(() => scrollToBottom(), [currentSession]);
 
   const getResponse = async () => {
@@ -170,34 +169,20 @@ const App = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-900 text-white">
+    <div>
       <Navbar />
-
-      {/* Mobile Hamburger */}
-      <div className="sm:hidden flex items-center justify-between p-4 border-b border-gray-700">
-        <h3 className="text-xl font-bold">FinGPT</h3>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)}>
-          <HiMenu size={30} />
-        </button>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div
-          className={`fixed sm:relative top-0 left-0 z-50 w-64 bg-zinc-900 h-full sm:h-auto p-4 border-r border-gray-700 transform ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } transition-transform duration-300 ease-in-out`}
-        >
+      <div className="flex flex-col sm:flex-row">
+        {/* History Sidebar */}
+        <div className="w-full sm:w-[250px] bg-zinc-900 text-white p-4 h-[40vh] sm:h-[80vh] overflow-y-auto overscroll-contain scroll-smooth">
           <h3 className="text-xl font-bold mb-4">History</h3>
           {history.length ? (
             history.map((item, idx) => (
               <div
                 key={idx}
-                className="mb-2 p-3 rounded-lg bg-gray-700 cursor-pointer hover:bg-gray-600 transition-all"
+                className="mb-2 p-2 rounded bg-gray-700 cursor-pointer hover:bg-gray-600"
                 onClick={() => {
                   setCurrentSession(item.session);
                   setScreen(2);
-                  setSidebarOpen(false);
                 }}
               >
                 {item.firstLine}...
@@ -208,117 +193,121 @@ const App = () => {
           )}
           <button
             onClick={startNewChat}
-            className="mt-4 w-full bg-blue-500 hover:bg-blue-600 p-2 rounded text-white transition-all"
+            className="mt-4 w-full bg-blue-500 hover:bg-blue-600 p-2 rounded text-white"
           >
             + New Chat
           </button>
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col justify-between w-full ml-0 sm:ml-64">
+        <div className="flex-1 w-full">
           {screen === 1 ? (
-            <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
-              <h3 className="text-5xl font-bold text-center">
+            <div className="screen-1 w-full h-[70vh] flex flex-col items-center justify-center">
+              <h3 className="!text-[45px] font-[700]">
                 Fin<span className="text-blue-500">GPT</span>
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 w-full">
+              <div className="flex flex-wrap justify-center gap-4 mt-5">
                 <div
-                  className="card flex flex-col items-center justify-center cursor-pointer bg-zinc-800 hover:bg-gray-800 rounded-lg p-5 transition-all"
+                  className="card w-full sm:w-[200px] cursor-pointer bg-zinc-800 transition-all hover:bg-gray-800 rounded-lg p-[20px]"
                   onClick={() => setScreen(2)}
                 >
-                  <MdOutlineAttachMoney className="text-6xl mb-2" />
-                  <p className="text-center">Money Management</p>
+                  <i className="text-[63px]">
+                    <MdOutlineAttachMoney />
+                  </i>
+                  <p>Money Management</p>
                 </div>
                 <div
-                  className="card flex flex-col items-center justify-center cursor-pointer bg-zinc-800 hover:bg-gray-800 rounded-lg p-5 transition-all"
+                  className="card w-full sm:w-[200px] cursor-pointer bg-zinc-800 transition-all hover:bg-gray-800 rounded-lg p-[20px]"
                   onClick={() => setScreen(2)}
                 >
-                  <BsGraphUp className="text-5xl mb-2" />
-                  <p className="text-center">Insights and Investments</p>
+                  <i className="text-[39px]">
+                    <BsGraphUp />
+                  </i>
+                  <p>Insights and Investments</p>
                 </div>
                 <div
-                  className="card flex flex-col items-center justify-center cursor-pointer bg-zinc-800 hover:bg-gray-800 rounded-lg p-5 transition-all"
+                  className="card w-full sm:w-[200px] cursor-pointer bg-zinc-800 transition-all hover:bg-gray-800 rounded-lg p-[20px]"
                   onClick={() => setScreen(2)}
                 >
-                  <AiOutlineBank className="text-6xl mb-2" />
-                  <p className="text-center">Banking Services</p>
+                  <i className="text-[63px]">
+                    <AiOutlineBank />
+                  </i>
+                  <p>Banking Services</p>
                 </div>
                 <div
-                  className="card flex flex-col items-center justify-center cursor-pointer bg-zinc-800 hover:bg-gray-800 rounded-lg p-5 transition-all"
+                  className="card w-full sm:w-[200px] cursor-pointer bg-zinc-800 transition-all hover:bg-gray-800 rounded-lg p-[20px]"
                   onClick={() => setScreen(2)}
                 >
-                  <IoWarningOutline className="text-5xl mb-2" />
-                  <p className="text-center">Learn about Risks and Fraud</p>
+                  <i className="text-[40px]">
+                    <IoWarningOutline />
+                  </i>
+                  <p>Learn about Risks and Fraud</p>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-8">
-              {currentSession.length ? (
-                currentSession.map((item, index) => (
-                  <div key={index} className="mb-4 flex flex-col">
-                    {item.role === "user" ? (
-                      <div className="self-end bg-blue-500 text-white rounded-2xl p-3 max-w-xs sm:max-w-[50%] shadow-md break-words">
-                        <p className="text-sm text-gray-100 mb-1">You</p>
-                        <p>{item.content}</p>
-                      </div>
-                    ) : (
-                      <div className="self-start bg-gray-700 rounded-2xl p-3 max-w-xs sm:max-w-[50%] shadow-md break-words">
-                        <p className="text-sm text-gray-300 mb-1">FinGPT</p>
-                        <Markdown>{item.content}</Markdown>
-                        {item.source && (
-                          <p className="text-blue-400 mt-2 text-sm break-words">
-                            Source: {item.source}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-400 text-center mt-10">No messages yet</p>
-              )}
+            <div className="screen-2 overflow-y-auto w-full h-[65vh] px-4 sm:px-8">
+              {currentSession.length
+                ? currentSession.map((item, index) => (
+                    <div key={index}>
+                      {item.role === "user" ? (
+                        <div className="user bg-gray-800 w-full sm:w-fit sm:max-w-[40vw] mb-5 ml-auto p-[15px]">
+                          <p className="text-[14px] text-[gray]">User</p>
+                          <p>{item.content}</p>
+                        </div>
+                      ) : (
+                        <div className="ai bg-gray-800 w-full sm:w-fit sm:max-w-[40vw] mb-5 mr-auto p-[15px]">
+                          <p className="text-[14px] text-[gray]">FinGPT</p>
+                          <Markdown>{item.content}</Markdown>
+                          {item.source && (
+                            <p className="text-blue-400 mt-2 text-sm">Source: {item.source}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                : "No messages yet"}
               <div ref={messagesEndRef} />
               {loading && (
-                <div className="flex justify-center mt-4">
+                <div className="loader">
                   <BeatLoader color="white" />
                 </div>
               )}
             </div>
           )}
-
-          {/* Input Box */}
-          <div className="sticky bottom-0 bg-zinc-900 p-4 border-t border-gray-700">
-            <div className="flex flex-col sm:flex-row items-center gap-2 bg-zinc-800 rounded-lg p-2">
-              <input
-                onKeyDown={(e) => e.key === "Enter" && getResponse()}
-                onChange={(e) => setPrompt(e.target.value)}
-                value={prompt}
-                type="text"
-                placeholder="Enter your message"
-                className="flex-1 bg-transparent p-3 outline-none rounded text-white text-sm sm:text-base break-words"
-              />
-              <VoiceInput onResult={(text) => setPrompt(text)} />
-              <button
-                onClick={() => setTtsEnabled(!ttsEnabled)}
-                className={`px-4 py-2 rounded-lg ${
-                  ttsEnabled ? "bg-green-500" : "bg-gray-600"
-                } text-white`}
-              >
-                {ttsEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
-              </button>
-              <button
-                onClick={getResponse}
-                className="p-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-              >
-                <IoSend size={20} />
-              </button>
-            </div>
-            <p className="text-gray-400 text-center mt-2 text-xs sm:text-sm">
-              This chatbot may make mistakes. Please cross-check important information before making financial decisions.
-            </p>
-          </div>
         </div>
+      </div>
+
+      {/* Input Box */}
+      <div className="inputBox px-4 sm:px-[150px] h-[15vh] pt-3">
+        <div className="input w-full flex flex-col sm:flex-row items-center gap-2 bg-zinc-800 rounded-lg p-2">
+          <input
+            onKeyDown={(e) => e.key === "Enter" && getResponse()}
+            onChange={(e) => setPrompt(e.target.value)}
+            value={prompt}
+            type="text"
+            placeholder="Enter your message"
+            className="flex-1 bg-transparent p-[10px] outline-none text-[16px] font-[500]"
+          />
+          <VoiceInput onResult={(text) => setPrompt(text)} />
+          <button
+            onClick={() => setTtsEnabled(!ttsEnabled)}
+            className={`ml-2 px-4 py-2 rounded-lg ${
+              ttsEnabled ? "bg-green-500" : "bg-gray-600"
+            } text-white`}
+          >
+            {ttsEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
+          </button>
+          <button
+            onClick={getResponse}
+            className="ml-2 p-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+          >
+            <IoSend size={20} />
+          </button>
+        </div>
+        <p className="text-[gray] text-center mt-2 text-sm">
+          This chatbot may make mistakes. Please cross-check important information before making financial decisions.
+        </p>
       </div>
     </div>
   );
