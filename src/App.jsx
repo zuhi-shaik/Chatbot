@@ -50,9 +50,7 @@ const VoiceInput = ({ onResult }) => {
   return (
     <button
       onClick={startListening}
-      className={`ml-2 px-4 py-2 rounded-lg ${
-        isListening ? "bg-red-500" : "bg-blue-500"
-      } text-white`}
+      className={`ml-2 px-4 py-2 rounded-lg ${isListening ? "bg-red-500" : "bg-blue-500"} text-white`}
     >
       {isListening ? "Listening..." : "🎤 Speak"}
     </button>
@@ -71,6 +69,7 @@ const speakText = (text) => {
   }
 };
 
+// Detect financial questions
 const isFinancialQuestion = (text) => {
   const keywords = ["investment", "stocks", "finance", "banking", "money", "risk", "fraud", "interest rate", "loan"];
   const lowerText = text.toLowerCase();
@@ -160,8 +159,7 @@ const App = () => {
   return (
     <div>
       <Navbar />
-      <div className="flex flex-col sm:flex-row">
-        {/* Sidebar */}
+      <div className="flex flex-wrap">
         <div className="w-full sm:w-[250px] bg-zinc-900 text-white p-4 h-[80vh] overflow-y-auto">
           <h3 className="text-xl font-bold mb-4">History</h3>
           {history.length ? (
@@ -188,14 +186,13 @@ const App = () => {
           </button>
         </div>
 
-        {/* Main Chat Area */}
         <div className="flex-1">
           {screen === 1 ? (
-            <div className="screen-1 w-full h-[70vh] flex items-center justify-center flex-col">
-              <h3 className="!text-[45px] font-[700]">
+            <div className="screen-1 w-full h-[70vh] flex flex-col items-center justify-center">
+              <h3 className="!text-[45px] font-[700] text-center">
                 Fin<span className="text-blue-500">GPT</span>
               </h3>
-              <div className="flex flex-wrap justify-center items-center gap-4 mt-5">
+              <div className="flex flex-wrap justify-center gap-4 mt-5">
                 <div className="card w-full sm:w-[200px] cursor-pointer bg-zinc-800 transition-all hover:bg-gray-800 rounded-lg p-[20px]" onClick={() => setScreen(2)}>
                   <i className="text-[63px]"><MdOutlineAttachMoney /></i>
                   <p>Money Management</p>
@@ -218,21 +215,21 @@ const App = () => {
             <div className="screen-2 overflow-y-auto w-full h-[65vh] px-4 sm:px-8">
               {currentSession.length
                 ? currentSession.map((item, index) => (
-                  <div key={index}>
-                    {item.role === "user" ? (
-                      <div className="user bg-gray-800 w-full sm:w-fit sm:max-w-[40vw] mb-5 ml-auto p-[15px] break-words">
-                        <p className="text-[14px] text-[gray]">User</p>
-                        <p>{item.content}</p>
-                      </div>
-                    ) : (
-                      <div className="ai bg-gray-800 w-full sm:w-fit sm:max-w-[40vw] mb-5 mr-auto p-[15px] break-words">
-                        <p className="text-[14px] text-[gray]">FinGPT</p>
-                        <Markdown>{item.content}</Markdown>
-                        {item.source && <p className="text-blue-400 mt-2 text-sm">Source: {item.source}</p>}
-                      </div>
-                    )}
-                  </div>
-                ))
+                    <div key={index}>
+                      {item.role === "user" ? (
+                        <div className="user bg-gray-800 w-full sm:w-fit sm:max-w-[40vw] mb-5 ml-auto p-[15px]">
+                          <p className="text-[14px] text-[gray]">User</p>
+                          <p>{item.content}</p>
+                        </div>
+                      ) : (
+                        <div className="ai bg-gray-800 w-full sm:w-fit sm:max-w-[40vw] mb-5 mr-auto p-[15px]">
+                          <p className="text-[14px] text-[gray]">FinGPT</p>
+                          <Markdown>{item.content}</Markdown>
+                          {item.source && <p className="text-blue-400 mt-2 text-sm">Source: {item.source}</p>}
+                        </div>
+                      )}
+                    </div>
+                  ))
                 : "No messages yet"}
               <div ref={messagesEndRef} />
               {loading && <div className="loader"><BeatLoader color="white" /></div>}
@@ -241,34 +238,31 @@ const App = () => {
         </div>
       </div>
 
-      {/* Input */}
       <div className="inputBox px-4 sm:px-[150px] h-[15vh] pt-3">
-        <div className="input w-full flex flex-col sm:flex-row items-center gap-2 bg-zinc-800 rounded-lg p-[5px]">
+        <div className="input w-full flex flex-wrap items-center gap-[10px] bg-zinc-800 rounded-lg p-[5px]">
           <input
             onKeyDown={(e) => e.key === "Enter" && getResponse()}
             onChange={(e) => setPrompt(e.target.value)}
             value={prompt}
             type="text"
             placeholder="Enter your message"
-            className="flex-1 bg-transparent p-[15px] outline-none text-[16px] sm:text-[18px] font-[500]"
+            className="flex-1 bg-transparent p-[20px] outline-none text-[18px] font-[500]"
           />
-          <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
-            <VoiceInput onResult={(text) => setPrompt(text)} />
-            <button
-              onClick={() => setTtsEnabled(!ttsEnabled)}
-              className={`px-4 py-2 rounded-lg ${ttsEnabled ? "bg-green-500" : "bg-gray-600"} text-white`}
-            >
-              {ttsEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
-            </button>
-            <button
-              onClick={getResponse}
-              className="p-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-            >
-              <IoSend size={20} />
-            </button>
-          </div>
+          <VoiceInput onResult={(text) => setPrompt(text)} />
+          <button
+            onClick={() => setTtsEnabled(!ttsEnabled)}
+            className={`ml-2 px-4 py-2 rounded-lg ${ttsEnabled ? "bg-green-500" : "bg-gray-600"} text-white`}
+          >
+            {ttsEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
+          </button>
+          <button
+            onClick={getResponse}
+            className="ml-2 p-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+          >
+            <IoSend size={20} />
+          </button>
         </div>
-        <p className="text-[gray] text-center mt-2 sm:mt-0">
+        <p className="text-[gray] text-center mt-2">
           This chatbot may make mistakes. Please cross-check important information before making financial decisions.
         </p>
       </div>
