@@ -1,5 +1,5 @@
 A financial services AI chatbot built with React, Vite, and Google’s GenAI API.
-It provides concise, credible answers to financial questions, including money management, investments, banking, and fraud awareness. Voice input and text-to-speech are also supported.
+It provides concise, credible answers to financial questions, including money management, investments, banking, and fraud awareness. Voice input,text-to-speech and chat history are also supported.
 
 Live Demo:
 Check out the chatbot live here:
