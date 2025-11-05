@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import "./App.css";
 import Navbar from "./Components/Navbar";
 import { GoogleGenAI } from "@google/genai";
@@ -71,24 +71,81 @@ const speakText = (text) => {
   }
 };
 
-// Detect financial questions
+// Detect financial/banking/marketing-related questions (broad matching by roots)
 const isFinancialQuestion = (text) => {
-  const keywords = [
-    "investment",
-    "stocks",
-    "finance",
-    "banking",
+  if (!text) return false;
+  const lowerText = text.toLowerCase();
+  const roots = [
+    "invest",
+    "stock",
+    "financ",
+    "bank",
+    "marketing",
+    "market ", // trailing space to avoid matching 'bookmark' etc.
     "money",
     "risk",
     "fraud",
-    "interest rate",
+    "interest",
     "loan",
+    "credit",
+    "debit",
+    "account",
+    "balance",
+    "transact",
+    "statement",
+    "transfer",
+    "benefici",
+    "payee",
+    "remittance",
+    "neft",
+    "rtgs",
+    "imps",
+    "ledger",
+    "history",
+    "saving",
+    "deposit",
+    "withdraw",
+    "mortgage",
+    "emi",
+    "insurance",
+    "budget",
+    "tax",
+    "revenue",
+    "expense",
+    "roi",
+    "mutual fund",
+    "sip",
+    "etf",
+    "bond",
+    "ipo",
+    "dividend",
+    "portfolio",
+    "asset",
+    "liabilit",
+    "forex",
+    "currency",
+    "inflation",
+    "gdp",
+    "payment",
+    "upi",
+    "card",
+    "trading",
+    "broker",
+    "pricing",
+    "campaign",
+    "conversion",
+    "lead ",
+    "cpc",
+    "cpm",
+    "ctr",
+    "sale",
+    "price",
   ];
-  const lowerText = text.toLowerCase();
-  return keywords.some((word) => lowerText.includes(word));
+  return roots.some((r) => lowerText.includes(r));
 };
 
 const App = () => {
+  const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
   const [screen, setScreen] = useState(1);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
@@ -97,8 +154,19 @@ const App = () => {
   const [history, setHistory] = useState([]);
   const [currentSession, setCurrentSession] = useState([]);
   const messagesEndRef = useRef(null);
+  const ai = useMemo(() => {
+    if (!apiKey) {
+      console.error("Missing VITE_GOOGLE_API_KEY environment variable");
+      return null;
+    }
 
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GOOGLE_API_KEY });
+    try {
+      return new GoogleGenAI({ apiKey });
+    } catch (error) {
+      console.error("Failed to initialise GoogleGenAI client:", error);
+      return null;
+    }
+  }, [apiKey]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -113,15 +181,48 @@ const App = () => {
       setHistory((prev) => [...prev, { firstLine, session: [] }]);
     }
 
-    const userMessage = isFinancialQuestion(prompt)
-      ? `You are a financial expert. Answer concisely and always provide sources in the format:\nAnswer: <your answer>\nSource: <source link or reference>\nQuestion: ${prompt}`
-      : `Answer concisely.\nQuestion: ${prompt}`;
+    // Block non-financial prompts with a helpful message
+    if (!isFinancialQuestion(prompt)) {
+      const userMsg = { role: "user", content: prompt };
+      const refusal = {
+        role: "ai",
+        content:
+          "I can help with financial, banking, and marketing topics only. Please ask about investments, banking services, loans, interest rates, fraud/risk awareness, budgeting, or related financial marketing topics.",
+      };
+      setCurrentSession((prev) => {
+        const updated = [...prev, userMsg, refusal];
+        setHistory((history) => {
+          const newHistory = [...history];
+          if (newHistory.length > 0) newHistory[newHistory.length - 1].session = updated;
+          return newHistory;
+        });
+        return updated;
+      });
+      setPrompt("");
+      setScreen(2);
+      return;
+    }
+
+    const userMessage = `You are a financial expert. Answer concisely and always provide sources in the format:\nAnswer: <your answer>\nSource: <source link or reference>\nQuestion: ${prompt}`;
 
     const newMessage = { role: "user", content: prompt };
     setCurrentSession((prev) => [...prev, newMessage]);
     setPrompt("");
     setScreen(2);
     setLoading(true);
+
+    if (!ai) {
+      setCurrentSession((prev) => [
+        ...prev,
+        {
+          role: "ai",
+          content:
+            "The chatbot is not configured. Please set VITE_GOOGLE_API_KEY in your Vite environment variables and restart the dev server.",
+        },
+      ]);
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await ai.models.generateContent({
@@ -169,11 +270,16 @@ const App = () => {
   };
 
   return (
-    <div>
+    <div className="min-h-screen flex flex-col">
+      {!apiKey && (
+        <div className="bg-red-600 text-white text-center p-2 text-sm">
+          Missing VITE_GOOGLE_API_KEY. Responses will be unavailable until it is set.
+        </div>
+      )}
       <Navbar />
-      <div className="flex flex-col sm:flex-row">
+      <div className="flex-1 flex flex-col sm:flex-row max-w-7xl mx-auto w-full gap-4 px-4 sm:px-6 lg:px-12">
         {/* History Sidebar */}
-        <div className="w-full sm:w-[250px] bg-zinc-900 text-white p-4 h-[40vh] sm:h-[80vh] overflow-y-auto overscroll-contain scroll-smooth">
+        <div className="w-full sm:w-[260px] bg-zinc-900 text-white p-4 rounded-lg sm:rounded-none sm:rounded-l-lg max-h-[40vh] sm:max-h-none overflow-y-auto overscroll-contain scroll-smooth">
           <h3 className="text-xl font-bold mb-4">History</h3>
           {history.length ? (
             history.map((item, idx) => (
@@ -200,10 +306,10 @@ const App = () => {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 w-full">
+        <div className="flex-1 w-full flex flex-col">
           {screen === 1 ? (
-            <div className="screen-1 w-full h-[70vh] flex flex-col items-center justify-center">
-              <h3 className="!text-[45px] font-[700]">
+            <div className="screen-1 w-full min-h-[50vh] sm:min-h-[70vh] flex flex-col items-center justify-center">
+              <h3 className="text-4xl sm:text-5xl md:text-6xl font-[700]">
                 Fin<span className="text-blue-500">GPT</span>
               </h3>
               <div className="flex flex-wrap justify-center gap-4 mt-5">
@@ -246,17 +352,17 @@ const App = () => {
               </div>
             </div>
           ) : (
-            <div className="screen-2 overflow-y-auto w-full h-[65vh] px-4 sm:px-8">
+            <div className="screen-2 overflow-y-auto w-full flex-1 min-h-[45vh] sm:min-h-[60vh] px-4 sm:px-8">
               {currentSession.length
                 ? currentSession.map((item, index) => (
                     <div key={index}>
                       {item.role === "user" ? (
-                        <div className="user bg-gray-800 w-full sm:w-fit sm:max-w-[40vw] mb-5 ml-auto p-[15px]">
+                        <div className="user bg-gray-800 w-full sm:w-auto max-w-full sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] mb-5 ml-auto p-[15px] rounded-lg">
                           <p className="text-[14px] text-[gray]">User</p>
                           <p>{item.content}</p>
                         </div>
                       ) : (
-                        <div className="ai bg-gray-800 w-full sm:w-fit sm:max-w-[40vw] mb-5 mr-auto p-[15px]">
+                        <div className="ai bg-gray-800 w-full sm:w-auto max-w-full sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] mb-5 mr-auto p-[15px] rounded-lg">
                           <p className="text-[14px] text-[gray]">FinGPT</p>
                           <Markdown>{item.content}</Markdown>
                           {item.source && (
@@ -279,7 +385,7 @@ const App = () => {
       </div>
 
       {/* Input Box */}
-      <div className="inputBox px-4 sm:px-[150px] h-[15vh] pt-3">
+      <div className="inputBox w-full px-4 sm:px-6 lg:px-12 py-3 mt-2">
         <div className="input w-full flex flex-col sm:flex-row items-center gap-2 bg-zinc-800 rounded-lg p-2">
           <input
             onKeyDown={(e) => e.key === "Enter" && getResponse()}
@@ -292,9 +398,9 @@ const App = () => {
           <VoiceInput onResult={(text) => setPrompt(text)} />
           <button
             onClick={() => setTtsEnabled(!ttsEnabled)}
-            className={`ml-2 px-4 py-2 rounded-lg ${
+            className={`${
               ttsEnabled ? "bg-green-500" : "bg-gray-600"
-            } text-white`}
+            } ml-2 px-4 py-2 rounded-lg text-white`}
           >
             {ttsEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
           </button>
