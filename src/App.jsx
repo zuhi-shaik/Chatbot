@@ -173,16 +173,17 @@ const App = () => {
   };
   useEffect(() => scrollToBottom(), [currentSession]);
 
-  const getResponse = async () => {
-    if (!prompt) return alert("Please enter a prompt");
+  const getResponse = async (forcedPrompt) => {
+    const promptToUse = forcedPrompt ?? prompt;
+    if (!promptToUse) return alert("Please enter a prompt");
 
     if (currentSession.length === 0) {
-      const firstLine = prompt.split("\n")[0].slice(0, 50);
+      const firstLine = promptToUse.split("\n")[0].slice(0, 50);
       setHistory((prev) => [...prev, { firstLine, session: [] }]);
     }
 
     // Block non-financial prompts with a helpful message
-    if (!isFinancialQuestion(prompt)) {
+    if (!isFinancialQuestion(promptToUse)) {
       const userMsg = { role: "user", content: prompt };
       const refusal = {
         role: "ai",
@@ -203,9 +204,9 @@ const App = () => {
       return;
     }
 
-    const userMessage = `You are a financial expert. Answer concisely and always provide sources in the format:\nAnswer: <your answer>\nSource: <source link or reference>\nQuestion: ${prompt}`;
+    const userMessage = `You are a financial expert. Answer concisely and always provide sources in the format:\nAnswer: <your answer>\nSource: <source link or reference>\nQuestion: ${promptToUse}`;
 
-    const newMessage = { role: "user", content: prompt };
+    const newMessage = { role: "user", content: promptToUse };
     setCurrentSession((prev) => [...prev, newMessage]);
     setPrompt("");
     setScreen(2);
@@ -236,7 +237,7 @@ const App = () => {
       let answer = botReply;
       let source = "";
 
-      if (isFinancialQuestion(prompt) && botReply.includes("Source:")) {
+      if (isFinancialQuestion(promptToUse) && botReply.includes("Source:")) {
         const parts = botReply.split("Source:");
         answer = parts[0].replace("Answer:", "").trim();
         source = parts[1].trim();
@@ -270,25 +271,33 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col font-sans">
       {!apiKey && (
         <div className="bg-red-600 text-white text-center p-2 text-sm">
           Missing VITE_GOOGLE_API_KEY. Responses will be unavailable until it is set.
         </div>
       )}
       <Navbar />
-      <div className="flex-1 flex flex-col sm:flex-row max-w-7xl mx-auto w-full gap-4 px-4 sm:px-6 lg:px-12">
+      <div className="flex-1 flex flex-row w-full gap-4 animate-fadeIn">
         {/* History Sidebar */}
-        <div className="w-full sm:w-[260px] bg-zinc-900 text-white p-4 rounded-lg sm:rounded-none sm:rounded-l-lg max-h-[40vh] sm:max-h-none overflow-y-auto overscroll-contain scroll-smooth">
+        <div className="w-[260px] bg-surface/60 backdrop-blur border border-white/10 text-white p-4 rounded-none overflow-y-auto overscroll-contain scroll-smooth">
           <h3 className="text-xl font-bold mb-4">History</h3>
           {history.length ? (
             history.map((item, idx) => (
               <div
                 key={idx}
-                className="mb-2 p-2 rounded bg-gray-700 cursor-pointer hover:bg-gray-600"
+                className="mb-2 p-2 rounded bg-gray-800/70 border border-white/10 cursor-pointer hover:bg-gray-700/70 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   setCurrentSession(item.session);
                   setScreen(2);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setCurrentSession(item.session);
+                    setScreen(2);
+                  }
                 }}
               >
                 {item.firstLine}...
@@ -299,14 +308,14 @@ const App = () => {
           )}
           <button
             onClick={startNewChat}
-            className="mt-4 w-full bg-blue-500 hover:bg-blue-600 p-2 rounded text-white"
+            className="mt-4 w-full bg-primary-600 hover:bg-primary-500 p-2 rounded text-white transition-colors"
           >
             + New Chat
           </button>
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 w-full flex flex-col">
+        <div className="flex-1 w-full flex flex-col px-4 sm:px-6 lg:px-12">
           {screen === 1 ? (
             <div className="screen-1 w-full min-h-[50vh] sm:min-h-[70vh] flex flex-col items-center justify-center">
               <h3 className="text-4xl sm:text-5xl md:text-6xl font-[700]">
@@ -314,40 +323,40 @@ const App = () => {
               </h3>
               <div className="flex flex-wrap justify-center gap-4 mt-5">
                 <div
-                  className="card w-full sm:w-[200px] cursor-pointer bg-zinc-800 transition-all hover:bg-gray-800 rounded-lg p-[20px]"
-                  onClick={() => setScreen(2)}
+                  className="card w-full sm:w-[200px] cursor-pointer bg-surface/60 backdrop-blur border border-white/10 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:bg-surface/80 rounded-lg p-[20px] duration-200"
+                  onClick={() => getResponse("How can I budget and manage my money effectively?")}
                 >
-                  <i className="text-[63px]">
+                  <i className="text-[63px] text-primary-400">
                     <MdOutlineAttachMoney />
                   </i>
-                  <p>Money Management</p>
+                  <p className="mt-2 text-gray-200">Money Management</p>
                 </div>
                 <div
-                  className="card w-full sm:w-[200px] cursor-pointer bg-zinc-800 transition-all hover:bg-gray-800 rounded-lg p-[20px]"
-                  onClick={() => setScreen(2)}
+                  className="card w-full sm:w-[200px] cursor-pointer bg-surface/60 backdrop-blur border border-white/10 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:bg-surface/80 rounded-lg p-[20px] duration-200"
+                  onClick={() => getResponse("What are smart ways to start investing and what risks should I consider?")}
                 >
-                  <i className="text-[39px]">
+                  <i className="text-[39px] text-primary-400">
                     <BsGraphUp />
                   </i>
-                  <p>Insights and Investments</p>
+                  <p className="mt-2 text-gray-200">Insights and Investments</p>
                 </div>
                 <div
-                  className="card w-full sm:w-[200px] cursor-pointer bg-zinc-800 transition-all hover:bg-gray-800 rounded-lg p-[20px]"
-                  onClick={() => setScreen(2)}
+                  className="card w-full sm:w-[200px] cursor-pointer bg-surface/60 backdrop-blur border border-white/10 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:bg-surface/80 rounded-lg p-[20px] duration-200"
+                  onClick={() => getResponse("What banking services are available and how do I choose the right one?")}
                 >
-                  <i className="text-[63px]">
+                  <i className="text-[63px] text-primary-400">
                     <AiOutlineBank />
                   </i>
-                  <p>Banking Services</p>
+                  <p className="mt-2 text-gray-200">Banking Services</p>
                 </div>
                 <div
-                  className="card w-full sm:w-[200px] cursor-pointer bg-zinc-800 transition-all hover:bg-gray-800 rounded-lg p-[20px]"
-                  onClick={() => setScreen(2)}
+                  className="card w-full sm:w-[200px] cursor-pointer bg-surface/60 backdrop-blur border border-white/10 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:bg-surface/80 rounded-lg p-[20px] duration-200"
+                  onClick={() => getResponse("What common financial frauds should I know about and how can I stay safe?")}
                 >
-                  <i className="text-[40px]">
+                  <i className="text-[40px] text-primary-400">
                     <IoWarningOutline />
                   </i>
-                  <p>Learn about Risks and Fraud</p>
+                  <p className="mt-2 text-gray-200">Learn about Risks and Fraud</p>
                 </div>
               </div>
             </div>
@@ -357,16 +366,18 @@ const App = () => {
                 ? currentSession.map((item, index) => (
                     <div key={index}>
                       {item.role === "user" ? (
-                        <div className="user bg-gray-800 w-full sm:w-auto max-w-full sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] mb-5 ml-auto p-[15px] rounded-lg">
-                          <p className="text-[14px] text-[gray]">User</p>
-                          <p>{item.content}</p>
+                        <div className="user bg-gray-800/80 border border-white/10 shadow-sm animate-slideUp w-full sm:w-auto max-w-full sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] mb-5 ml-auto p-[15px] rounded-xl">
+                          <p className="text-[12px] uppercase tracking-wide text-gray-400">User</p>
+                          <p className="leading-relaxed">{item.content}</p>
                         </div>
                       ) : (
-                        <div className="ai bg-gray-800 w-full sm:w-auto max-w-full sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] mb-5 mr-auto p-[15px] rounded-lg">
-                          <p className="text-[14px] text-[gray]">FinGPT</p>
-                          <Markdown>{item.content}</Markdown>
+                        <div className="ai bg-gray-800/80 border border-white/10 shadow-sm animate-slideUp w-full sm:w-auto max-w-full sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] mb-5 mr-auto p-[15px] rounded-xl">
+                          <p className="text-[12px] uppercase tracking-wide text-gray-400">FinGPT</p>
+                          <div className="prose prose-invert max-w-none">
+                            <Markdown>{item.content}</Markdown>
+                          </div>
                           {item.source && (
-                            <p className="text-blue-400 mt-2 text-sm">Source: {item.source}</p>
+                            <p className="text-primary-300 mt-2 text-sm">Source: {item.source}</p>
                           )}
                         </div>
                       )}
@@ -386,27 +397,31 @@ const App = () => {
 
       {/* Input Box */}
       <div className="inputBox w-full px-4 sm:px-6 lg:px-12 py-3 mt-2">
-        <div className="input w-full flex flex-col sm:flex-row items-center gap-2 bg-zinc-800 rounded-lg p-2">
+        <div className="input w-full flex flex-col sm:flex-row items-center gap-2 bg-surface/60 backdrop-blur border border-white/10 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500 transition-shadow">
           <input
             onKeyDown={(e) => e.key === "Enter" && getResponse()}
             onChange={(e) => setPrompt(e.target.value)}
             value={prompt}
             type="text"
-            placeholder="Enter your message"
-            className="flex-1 bg-transparent p-[10px] outline-none text-[16px] font-[500]"
+            placeholder="Ask about investments, banking, budgeting, fraud awareness..."
+            aria-label="Message input"
+            className="flex-1 bg-transparent p-[10px] outline-none text-[16px] font-[500] placeholder:text-gray-400"
           />
           <VoiceInput onResult={(text) => setPrompt(text)} />
           <button
             onClick={() => setTtsEnabled(!ttsEnabled)}
+            aria-pressed={ttsEnabled}
+            aria-label={ttsEnabled ? "Disable voice" : "Enable voice"}
             className={`${
-              ttsEnabled ? "bg-green-500" : "bg-gray-600"
-            } ml-2 px-4 py-2 rounded-lg text-white`}
+              ttsEnabled ? "bg-green-600 hover:bg-green-500" : "bg-gray-700 hover:bg-gray-600"
+            } ml-2 px-4 py-2 rounded-lg text-white transition-colors`}
           >
             {ttsEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
           </button>
           <button
             onClick={getResponse}
-            className="ml-2 p-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+            aria-label="Send message"
+            className="ml-2 p-3 rounded-lg bg-primary-600 text-white hover:bg-primary-500 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <IoSend size={20} />
           </button>
